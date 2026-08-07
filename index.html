@@ -494,20 +494,55 @@
         gap: 8px;
       }
       .chip {
-        border: 1px solid #ddd;
+        border: 1px solid var(--purple-bottom);
         border-radius: 16px;
         padding: 6px 12px;
         font-size: 11px;
-        color: #333;
+        color: var(--purple-bottom);
         background: #fff;
         cursor: pointer;
         transition:
           background 0.2s,
-          border-color 0.2s;
+          border-color 0.2s,
+          color 0.2s;
       }
       .chip:hover {
-        background: #f0f0f0;
-        border-color: #ccc;
+        background: var(--purple-bottom);
+        color: #fff;
+        border-color: var(--purple-bottom);
+      }
+
+      /* Suggested chips di dalam bubble bot */
+      .bot-suggestions {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .bot-suggestions-label {
+        font-size: 10px;
+        font-weight: 600;
+        color: #6b7c8a;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+      }
+      .bot-suggestion-chip {
+        display: inline-block;
+        border: 1px solid #b8d4dc;
+        border-radius: 12px;
+        padding: 5px 10px;
+        font-size: 11px;
+        color: #1a3a44;
+        background: #eef7fa;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+        text-align: left;
+        line-height: 1.4;
+      }
+      .bot-suggestion-chip:hover {
+        background: #def0f5;
+        border-color: #739ba6;
       }
 
       .chatbot-footer {
@@ -837,15 +872,38 @@
         scrollChatToBottom();
       }
 
-      function appendBotMessage(text, isError = false) {
+      function appendBotMessage(text, isError = false, suggestedQuestions = []) {
         const el = document.createElement("div");
         el.className = "chat-message bot";
+
+        // Build suggested chips HTML
+        let suggestionsHtml = "";
+        if (!isError && suggestedQuestions && suggestedQuestions.length > 0) {
+          const chipsHtml = suggestedQuestions
+            .map(q => `<button class="bot-suggestion-chip" data-q="${q.replace(/"/g, '&quot;')}">${q}</button>`)
+            .join("");
+          suggestionsHtml = `
+            <div class="bot-suggestions">
+              <div class="bot-suggestions-label">Pertanyaan terkait:</div>
+              ${chipsHtml}
+            </div>`;
+        }
+
         el.innerHTML = `
           <img src="https://www.kbihumiftahululum.com/wp-content/uploads/2024/09/logo-kbihu1.png"
                alt="Bot" class="bot-avatar" />
-          <div class="message-bubble${isError ? " error" : ""}"></div>
+          <div>
+            <div class="message-bubble${isError ? " error" : ""}"></div>
+            ${suggestionsHtml}
+          </div>
         `;
         el.querySelector(".message-bubble").textContent = text;
+
+        // Attach click handlers to suggestion chips
+        el.querySelectorAll(".bot-suggestion-chip").forEach(chip => {
+          chip.addEventListener("click", () => sendMessage(chip.dataset.q));
+        });
+
         chatBody.appendChild(el);
         scrollChatToBottom();
       }
@@ -898,7 +956,7 @@
 
           const data = await response.json();
           removeTypingIndicator();
-          appendBotMessage(data.answer);
+          appendBotMessage(data.answer, false, data.suggested_questions || []);
         } catch (err) {
           removeTypingIndicator();
           appendBotMessage(
